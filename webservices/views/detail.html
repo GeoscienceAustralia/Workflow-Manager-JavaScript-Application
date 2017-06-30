@@ -1,0 +1,1401 @@
+﻿<!-- Job Detail (view) -->
+<div id="job-detail-container" style="min-height:100%;">
+    
+    <!-- Job Detail Loading -->
+    <div class="row" data-ng-show="(jobDetailView == 'loading')">
+        <div class="col-md-12">
+            <div class="well well-sm loading">
+                Loading...
+            </div>
+        </div>
+    </div>
+
+    <!-- Job Detail Error -->
+    <div class="row" data-ng-show="(jobDetailView == 'error')">
+        <div class="col-md-12">
+            <div class="well well-sm job-query-error">
+                <span class="glyphicon glyphicon-warning-sign"></span>
+                <span>{{jobLoadError}} - <span class="fakelink" data-ng-click="reloadJobDetail()">Retry</span></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Job Detail 404 -->
+    <div class="row" data-ng-show="(jobDetailView == '404')">
+        <div class="col-md-12">
+            <h3>404: Not Found</h3>
+            <div class="well well-sm loading-error">   
+                <span class="glyphicon glyphicon-warning-sign"></span>
+                <span>Job #{{jobId}} was not found - Return to the <a href="index">Job List</a></span>
+            </div>
+        </div>
+    </div>
+    
+
+    <!-- Content -->
+    <div id="job-details-panel" class="row" style="min-height:100%;" data-ng-show="(jobDetailView == 'content')">
+        
+
+        <!-- Navigation Tabs -->
+        <div id="job-details-nav" class="col-md-2 job-detail-nav fill">
+
+            <ul class="nav nav-pills nav-stacked fill">
+                <li role="presentation" data-ng-repeat="item in tabs" data-ng-class="{'active': isActiveTab(item)}">
+                    <a href="job/{{jobId}}/{{item.id}}">{{item.name}}</a>
+                </li>
+            </ul>
+
+        </div>
+
+        <!-- Tab Content Area -->
+        <div class="col-md-10 job-detail-content" ng-switch="tabId">
+
+            <!-- Workflow tab -->
+            <div class="row" style="min-height:100%;" data-ng-controller="workflowTabCtrl" ng-switch-when="workflow">
+                <div class="col-md-12">
+
+                    <!-- Header, Loading and Error (directives) -->
+                    <div wm-tab-header></div>
+                    <div wm-tab-loading></div>
+                    <div wm-tab-error></div>
+
+                    <!-- Content -->
+                    <div data-ng-show="(tabView == 'content')">
+
+                        <!-- Buttons -->
+                        <div class="row tab-btns">
+
+                            <div class="col-md-12">
+
+                                <div class="btn-group" role="group" aria-label="Workflow Content View">
+                                    <button type="button" class="btn btn-default btn-sm" ng-class="{active: contentView == 'workflow'}" ng-click="contentView = 'workflow'">Workflow</button>
+                                    <button type="button" class="btn btn-default btn-sm" ng-class="{active: contentView == 'stephelp'}" ng-click="contentView = 'stephelp'">Step Help</button>
+                                </div>
+
+                                <button type="button" class="btn btn-default btn-sm" ng-show="contentView == 'workflow'" ng-disabled="!executeStepEnabled" data-ng-click="executeStep()">
+                                    <span class="glyphicon glyphicon-play" aria-hidden="true"></span> Execute Step
+                                </button>
+
+                                <button type="button" class="btn btn-default btn-sm" ng-show="contentView == 'workflow'" ng-disabled="!markStepCompleteEnabled" data-ng-click="markStepComplete()">
+                                    <span class="glyphicon glyphicon-check" aria-hidden="true"></span> Mark Step Complete
+                                </button>
+
+                                <button type="button" class="btn btn-default btn-sm" data-ng-click="refresh()">
+                                    <span class="glyphicon glyphicon-refresh" aria-hidden="true"></span> Refresh
+                                </button>
+
+                                <!-- Current Step -->
+                                <span>Current Step: </span>
+                                <span class="text-muted" ng-show="currentSteps.rows.length == 0">(none)</span>
+                                <span class="workflow-step-name" ng-show="currentSteps.rows.length == 1">{{currentStep.name}}</span>
+
+                                <!-- Current Step (if multiple) -->
+                                <div class="btn-group" id="chart-type-button" ng-show="currentSteps.rows.length > 1">
+                                    <button type="button" class="btn btn-default btn-sm">{{currentStep.name}}</button>
+                                    <button type="button" class="btn btn-default btn-sm dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                        <span class="caret"></span>
+                                        <span class="sr-only">Toggle Dropdown</span>
+                                    </button>
+                                    <!-- List of filters -->
+                                    <ul class="dropdown-menu">
+                                        <li data-ng-repeat="step in currentSteps.rows"><a href="#" data-ng-click="selectCurrentStep(step)">{{step.name}}</a></li>
+                                    </ul>
+                                </div>
+
+                            </div>
+
+                        </div>
+                        
+                        <!-- Detail -->
+                        <div class="row">
+                            
+                            <div drag-scroll class="col-md-12"  ng-show="contentView == 'workflow'" id="workflow-container" style="overflow:scroll;">
+                                
+                                <!-- Workflow Image -->
+                                <div id="workflow-image-container">
+                                    <img ng-src="{{workflowImageSrc}}" alt="Workflow Image" />
+                                </div>
+
+                            </div>
+
+                            <div class="col-md-12" ng-show="contentView == 'stephelp'" id="workflow-steps-container" style="overflow:scroll;">
+                                
+                                <!-- List of Current Steps -->
+                                <div class="step-help-current-panel" ng-show="currentSteps.rows.length > 0">
+                                    <h4>Current Step<span ng-show="currentSteps.rows.length > 1">s</span></h4>
+
+                                    <div class="step-help-item" ng-repeat="step in currentSteps.rows | orderBy:'name'">
+                                        <span>
+                                            <strong>{{step.name}}</strong> <span class="dim-text">({{step.id}})</span>
+                                            <span class="dim-text" data-ng-show="(!step.help.show)"> -&nbsp;<span class="fakelink" data-ng-click="showStepHelp(step)">more information</span></span>
+                                        </span>
+                                        <p>
+                                            <span data-ng-show="step.stepType.description == ''" class="dim-text">(No description available)</span>
+                                            <span data-ng-show="step.stepType.description != ''">{{step.stepType.description}}</span>
+                                        </p>
+
+                                        <!-- Step help block -->
+                                        <div class="step-help-block" data-ng-show="(step.help.show && step.help.loaded)">
+
+                                            <!-- Link help -->
+                                            <div class="well well-sm" data-ng-show="(!step.help.loadError && step.help.type == 3 && step.help.link != '')">
+                                                <p>For more information see:</p>
+                                                <ul>
+                                                    <li>
+                                                        <a href="{{step.help.link}}" target="_blank">{{step.help.link}}</a>
+                                                    </li>
+                                                </ul>
+                                                <a href="#" ng-click="step.help.show = false">Close</a>
+                                            </div>
+
+                                            <!-- No Link help -->
+                                            <div class="well well-sm" data-ng-show="(!step.help.loadError && step.help.type == 3 && step.help.link == '')">
+                                                <p>No additional help is available for this step.</p>
+                                                <a href="#" ng-click="step.help.show = false">Close</a>
+                                            </div>
+
+                                            <!-- Html help -->
+                                            <div class="well well-sm" data-ng-show="(!step.help.loadError && step.help.type == 2 && step.help.html != '')">
+                                                <p ng-bind-html="step.help.html"></p>
+
+                                                <a href="#" ng-click="step.help.show = false">Close</a>
+                                            </div>
+
+                                            <!-- No Html help -->
+                                            <div class="well well-sm" data-ng-show="(!step.help.loadError && step.help.type == 2 && step.help.html == '')">
+                                                <p>No additional help is available for this step.</p>
+                                                <a href="#" ng-click="step.help.show = false">Close</a>
+                                            </div>
+
+                                            <!-- Help Load Error -->
+                                            <div class="well well-sm" data-ng-show="(step.help.loadError)">
+                                                <p>
+                                                    <span class="glyphicon glyphicon-warning-sign"></span>
+                                                    Unable to retrieve step help from the server -
+                                                    <span class="fakelink" ng-click="showStepHelp(step, true)">Retry</span>
+                                                </p>
+                                                <a href="#" ng-click="step.help.show = false">Close</a>
+                                            </div>
+
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+                                <!-- List of Steps -->
+                                <h4>All Workflow Steps</h4>
+                                <div class="step-help-item" ng-repeat="step in steps.rows | orderBy:'name'">
+                                    <span>
+                                        <strong>{{step.name}}</strong> <span class="dim-text">({{step.id}})</span>
+                                        <span class="dim-text" data-ng-show="(!step.help.show)"> -&nbsp;<span class="fakelink" data-ng-click="showStepHelp(step)">more information</span></span>
+                                    </span>
+                                    <p>
+                                        <span data-ng-show="step.stepType.description == ''" class="dim-text">(No description available)</span>
+                                        <span data-ng-show="step.stepType.description != ''">{{step.stepType.description}}</span>
+                                    </p>
+
+                                    <!-- Step help block -->
+                                    <div class="step-help-block" data-ng-show="(step.help.show && step.help.loaded)">
+
+                                        <!-- Link help -->
+                                        <div class="well well-sm" data-ng-show="(!step.help.loadError && step.help.type == 3 && step.help.link != '')">
+                                            <p>For more information see:</p>
+                                            <ul>
+                                                <li>
+                                                    <a href="{{step.help.link}}" target="_blank">{{step.help.link}}</a>
+                                                </li>
+                                            </ul>
+                                            <a href="#" ng-click="step.help.show = false">Close</a>
+                                        </div>
+
+                                        <!-- No Link help -->
+                                        <div class="well well-sm" data-ng-show="(!step.help.loadError && step.help.type == 3 && step.help.link == '')">
+                                            <p>No additional help is available for this step.</p>
+                                            <a href="#" ng-click="step.help.show = false">Close</a>
+                                        </div>
+
+                                        <!-- Html help -->
+                                        <div class="well well-sm" data-ng-show="(!step.help.loadError && step.help.type == 2 && step.help.html != '')">
+                                            <p ng-bind-html="step.help.html"></p>
+
+                                            <a href="#" ng-click="step.help.show = false">Close</a>
+                                        </div>
+
+                                        <!-- No Html help -->
+                                        <div class="well well-sm" data-ng-show="(!step.help.loadError && step.help.type == 2 && step.help.html == '')">
+                                            <p>No additional help is available for this step.</p>
+                                            <a href="#" ng-click="step.help.show = false">Close</a>
+                                        </div>
+
+                                        <!-- Help Load Error -->
+                                        <div class="well well-sm" data-ng-show="(step.help.loadError)">
+                                            <p>
+                                                <span class="glyphicon glyphicon-warning-sign"></span>
+                                                Unable to retrieve step help from the server -
+                                                <span class="fakelink" ng-click="showStepHelp(step, true)">Retry</span>
+                                            </p>
+                                            <a href="#" ng-click="step.help.show = false">Close</a>
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+
+                        </div>
+
+                        <!-- Execute Step Dialog (executionType 5: Question) -->
+                        <div class="modal fade" id="stepQuestionDialog" tabindex="-1" role="dialog">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                                        <h4 class="modal-title">{{stepQuestion.title}}</h4>
+                                    </div>
+                                    <div class="modal-body">
+                                        <div class="step-question-panel">
+                                            <p ng-show="stepQuestion.description != ''">{{stepQuestion.description}}</p>
+                                            <p>{{stepQuestion.message}}</p>
+                                            <div class="radio step-question-options" ng-repeat="arg in stepQuestion.args">
+                                                <label>
+                                                    <input type="radio" name="argOptions" ng-click="setStepQuestionResult(arg)" value="{{arg.value}}">{{arg.description}}
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-primary" ng-disabled="stepQuestion.result == ''" ng-click="executeQuestionResult(stepQuestion)" data-dismiss="modal">Execute Step</button>
+                                        <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- Job Details tab -->
+            <div class="row" data-ng-controller="detailsTabCtrl" ng-switch-when="details">
+                <div class="col-md-12">
+
+                    <!-- Header, Loading and Error (directives) -->
+                    <div wm-tab-header></div>
+                    <div wm-tab-loading></div>
+                    <div wm-tab-error></div>
+
+                    <!-- Content -->
+                    <div data-ng-show="(tabView == 'content')">
+
+                        <!-- Buttons -->
+                        <div class="row tab-btns">
+
+                            <div class="col-md-12">
+
+                                <button type="button" class="btn btn-sm" data-ng-click="save()" ng-disabled="!tableDirty()"
+                                        ng-class="{'btn-default': !tableDirty(), 'btn-primary': tableDirty()}">
+                                    <span class="glyphicon glyphicon-floppy-disk" aria-hidden="true"></span> Save
+                                </button>
+
+                                <button type="button" class="btn btn-default btn-sm" data-ng-click="refresh()">
+                                    <span class="glyphicon glyphicon-refresh" aria-hidden="true"></span> Refresh
+                                </button>
+
+                            </div>
+
+                        </div>
+
+                        <!-- Table Navigation Tabs -->
+                        <div class="row tab-sub-navs">
+                            <div class="col-md-12">                                
+                                <ul class="nav nav-tabs">
+                                    <li role="presentation" data-ng-repeat="table in extProps.tables11" data-ng-class="{'active': isActiveTable(table)}">
+                                        <a href="#" ng-click="setActiveTable(table)">{{table.tableAlias}}</a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <!-- Extended Properties (Table Fields) -->
+                        <div class="row">
+                            <div class="col-md-12">
+
+                                <form class="form-horizontal" name="tables11Form" novalidate role="form">
+
+                                    <div ng-repeat="table in extProps.tables11" data-ng-show="isActiveTable(table)">
+                                        <div ng-repeat="rec in table.records">
+
+                                            <!-- Input is based on data type, etc -->
+                                            <div class="form-group" ng-switch="item.controlType" 
+                                                 ng-repeat="item in rec.recordValues | orderBy:'displayOrder' | filter: canUserSeeField">
+                                                <label class="control-label col-md-3">
+                                                    {{item.alias}} <span title="Required Field" ng-show="item.required">*</span>
+                                                </label>
+                                                
+                                                <div class="col-md-3" ng-switch-when="date">
+                                                    <input type="date" class="form-control" ng-model="item.data"
+                                                           ng-change="fieldChanged(item, table)" ng-required="item.required" />
+                                                    <!-- Validation -->
+                                                    <div class="validation-error" ng-messages="tables11Form[item.formId].$error">
+                                                        <div ng-message="required">(This field is required)</div>
+                                                    </div>
+                                                </div>
+
+                                                <div class="col-md-6 ie-tip" ng-switch-when="date">
+                                                    <span>Date format: yyyy-mm-dd (IE only)</span>
+                                                </div>
+
+                                                <div class="col-md-3" ng-switch-when="int">
+                                                    <input type="number" class="form-control" ng-model="item.data"
+                                                           ng-change="fieldChanged(item, table)" ng-required="item.required" />
+                                                    <!-- Validation -->
+                                                    <div class="validation-error" ng-messages="tables11Form[item.formId].$error">
+                                                        <div ng-message="required">(This field is required)</div>
+                                                    </div>
+                                                </div>
+
+                                                <div class="col-md-3" ng-switch-when="float">
+                                                    <input type="number" class="form-control" ng-model="item.data"
+                                                           ng-change="fieldChanged(item, table)" ng-required="item.required" />
+                                                    <!-- Validation -->
+                                                    <div class="validation-error" ng-messages="tables11Form[item.formId].$error">
+                                                        <div ng-message="required">(This field is required)</div>                                                        
+                                                    </div>
+                                                </div>
+
+                                                <div class="col-md-5" ng-switch-when="text-sm">
+                                                    <input type="text" class="form-control" ng-model="item.data"
+                                                           ng-change="fieldChanged(item, table)" ng-required="item.required" />
+                                                    <!-- Validation -->
+                                                    <div class="validation-error" ng-messages="tables11Form[item.formId].$error">
+                                                        <div ng-message="required">(This field is required)</div>
+                                                        <div ng-message="minlength">(This field is too short)</div>
+                                                        <div ng-message="maxlength">(This field is too long)</div>
+                                                    </div>
+                                                </div>
+
+                                                <div class="col-md-8" ng-switch-when="text">
+                                                    <input type="text" class="form-control" ng-model="item.data"
+                                                           ng-change="fieldChanged(item, table)" ng-required="item.required" />
+                                                    <!-- Validation -->
+                                                    <div class="validation-error" ng-messages="tables11Form[item.formId].$error">
+                                                        <div ng-message="required">(This field is required)</div>
+                                                        <div ng-message="minlength">(This field is too short)</div>
+                                                        <div ng-message="maxlength">(This field is too long)</div>
+                                                    </div>                                                
+                                                </div>
+
+                                                <div class="col-md-8" ng-switch-when="textarea" 
+                                                     ng-class="{'has-error': tables11Form[item.formId].$touched && tables11Form[item.formId].$invalid}">
+                                                    
+                                                    <textarea class="form-control" rows="{{rowCount(item)}}" name="{{item.formId}}" ng-model="item.data"
+                                                              maxlength="{{item.length}}" ng-change="fieldChanged(item, table)" ng-required="item.required"></textarea>
+                                                    <!-- Validation -->
+                                                    <div class="validation-error" ng-messages="tables11Form[item.formId].$error">
+                                                        <div ng-message="required">(This field is required)</div>                                                        
+                                                        <div ng-message="minlength">(This field is too short)</div>
+                                                        <div ng-message="maxlength">(This field is too long)</div>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="col-md-5" ng-switch-when="text-list">
+                                                    <select class="form-control" ng-model="item.data" ng-change="fieldChanged(item, table)" ng-required="item.required">
+                                                        <option ng-selected="(item.data == dv.value)" ng-repeat="dv in item.domainValues" value="{{dv.value}}">{{dv.description}}</option>
+                                                    </select>
+                                                </div>
+
+                                                <div class="col-md-8" ng-switch-default>
+                                                    <p class="form-read-only">{{item.data}}</p>
+                                                </div>
+
+                                            </div>
+
+
+
+
+                                        </div>
+
+
+                                    </div>
+                                    
+                                </form>
+
+
+
+
+                            </div>
+                        </div>
+                                        
+                        <!-- No Extended Properties -->
+                        <div class="well well-sm no-records" data-ng-show="(extProps.tables11.length == 0)">
+                            <span>There are no extended properties</span>
+                        </div>
+                        
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Service Dependencies tab -->
+            <div class="row" data-ng-controller="dependenciesTabCtrl" ng-switch-when="dependencies">
+                <div class="col-md-12">
+
+                    <!-- Header, Loading and Error (directives) -->
+                    <div wm-tab-header></div>
+                    <div wm-tab-loading></div>
+                    <div wm-tab-error></div>
+                    
+                    <!-- Content -->
+                    <div data-ng-show="(tabView == 'content')">
+
+                        <!-- Buttons -->
+                        <div class="row tab-btns">
+
+                            <div class="col-md-12">
+
+                                <button type="button" class="btn btn-default btn-sm" data-ng-click="addRecord()">
+                                    <span class="glyphicon glyphicon-plus" aria-hidden="true"></span> Add Record
+                                </button>
+
+                                <button type="button" class="btn btn-default btn-sm" data-ng-click="refresh()">
+                                    <span class="glyphicon glyphicon-refresh" aria-hidden="true"></span> Refresh
+                                </button>
+
+                            </div>
+
+                        </div>
+
+                        <!-- Table Navigation Tabs -->
+                        <div class="row tab-sub-navs">
+                            <div class="col-md-12">
+                                <ul class="nav nav-tabs">
+                                    <li role="presentation" data-ng-repeat="table in extProps.tables1N" data-ng-class="{'active': isActiveTable(table)}">
+                                        <a href="#" ng-click="setActiveTable(table)">{{table.tableAlias}} ({{table.records.length}})</a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                        
+                        <!-- Extended Properties (Table Fields) -->
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div ng-repeat="table in extProps.tables1N" data-ng-show="isActiveTable(table)">
+
+                                    <!-- New/Edit Record -->
+                                    <form ng-show="editing" class="form-horizontal" name="{{table.formName}}_edit" novalidate role="form">
+                                        <h4>{{editMode}} Row #{{editRec.id}}</h4>
+
+
+
+                                        <!-- Input is based on data type, etc -->
+                                        <div class="form-group" ng-switch="item.controlType" ng-repeat="item in editRec.recordValues | orderBy:'displayOrder'">
+                                            <label class="control-label col-md-3">{{item.alias}}</label>
+
+                                            <div class="col-md-5" ng-switch-when="text-sm">
+                                                <input type="text" class="form-control" ng-model="item.data" ng-change="fieldChanged(item, table)" />
+                                            </div>
+
+                                            <div class="col-md-8" ng-switch-when="text">
+                                                <input type="text" class="form-control" ng-model="item.data" ng-change="fieldChanged(item, table)" />
+                                            </div>
+
+                                            <div class="col-md-3" ng-switch-when="date">
+                                                <input type="date" class="form-control" ng-model="item.data" ng-change="fieldChanged(item, table)" />
+                                            </div>
+
+                                            <div class="col-md-3" ng-switch-when="int">
+                                                <input type="number" class="form-control" ng-model="item.data" ng-change="fieldChanged(item, table)" />
+                                            </div>
+
+                                            <div class="col-md-3" ng-switch-when="float">
+                                                <input type="number" class="form-control" ng-model="item.data" ng-change="fieldChanged(item, table)" />
+                                            </div>
+
+                                            <div class="col-md-8" ng-switch-when="textarea">
+                                                <textarea class="form-control" rows="2" ng-model="item.data" ng-change="fieldChanged(item, table)"></textarea>                                          
+                                            </div>
+
+                                            <div class="col-md-8" ng-switch-when="textarea-md">
+                                                <textarea class="form-control" rows="3" ng-model="item.data" ng-change="fieldChanged(item, table)"></textarea>
+                                            </div>
+
+                                            <div class="col-md-8" ng-switch-when="textarea-lg">
+                                                <textarea class="form-control" rows="5" ng-model="item.data" ng-change="fieldChanged(item, table)"></textarea>
+                                            </div>
+
+                                            <div class="col-md-5" ng-switch-when="text-list">
+                                                <select class="form-control" ng-model="item.data" ng-change="fieldChanged(item, table)">
+                                                    <option ng-selected="(item.data == dv.value)" ng-repeat="dv in item.domainValues" value="{{dv.value}}">{{dv.description}}</option>
+                                                </select>
+                                            </div>
+
+                                            <div class="col-md-8" ng-switch-default>
+                                                <p class="form-read-only">{{item.data}}</p>
+                                            </div>
+
+                                        </div>
+
+                                        <div class="form-group">
+
+                                            <div class="col-md-5 col-md-offset-3">
+
+                                                <button type="button" class="btn btn-primary btn-sm" data-ng-click="save()">
+                                                    Save
+                                                </button>
+
+                                                <button type="button" class="btn btn-default btn-sm" data-ng-click="cancelEdit()">
+                                                    Cancel
+                                                </button>
+
+                                            </div>
+                                        </div>
+
+                                    </form>
+
+                                    <!-- Existing Records -->
+                                    <div ng-repeat="rec in table.records" ng-hide="adding">
+
+                                        <!-- Record Details -->            
+                                        <div class="sd-panel" ng-show="!editing">                                                                        
+                                            <table>                                               
+                                                <tr ng-repeat="item in rec.recordValues | orderBy:'displayOrder'">
+                                                    <td class="sd-row-label">{{item.alias}}</td>
+                                                    <td ng-class="{'sd-row-title': item.displayOrder == 1}">
+                                                        <span ng-show="isUrl(item)"><a href="{{item.data}}">{{item.data}}</a></span>
+                                                        <span ng-hide="isUrl(item)">{{displayValue(item)}}</span>
+                                                    </td>
+                                                </tr>               
+                                            </table>
+                                            <p class="sd-row-edit-links">
+                                                <span class="fakelink" ng-click="editRecord(rec)"><span class="glyphicon glyphicon-edit pad-right" aria-hidden="true"></span>Edit this record</span>
+                                                <span class="separator">|</span>
+                                                <span class="fakelink" data-toggle="modal" data-target="#sdConfirmDeleteDialog" data-ng-click="setDeleteId(rec.id)">
+                                                <span class="glyphicon glyphicon-remove pad-right" aria-hidden="true"></span>Delete this record</span>
+                                                <span class="pull-right dim-text">#{{rec.id}}</span>
+                                            </p>
+                                        </div>
+
+                                    </div>
+             
+                                    <div class="well well-sm no-records" data-ng-show="(!adding && table.records.length == 0)">
+                                        <span>There are no records</span>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- No Service Dependencies -->
+                        <div class="well well-sm no-records" data-ng-show="(!adding && extProps.tables1N.length == 0)">
+                            <span>There are no service dependencies</span>
+                        </div>
+
+                        <!-- Confirm Delete Dialog -->
+                        <div class="modal fade" id="sdConfirmDeleteDialog" tabindex="-1" role="dialog">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                                        <h4 class="modal-title">Confirm Delete</h4>
+                                    </div>
+                                    <div class="modal-body">
+                                        <p>Delete row #{{deleteId}} from {{activeTableAlias}}?</p>                                        
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-danger" data-dismiss="modal" ng-click="deleteRecord(deleteId)">Delete</button>
+                                        <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+
+
+                    </div>
+                    
+                </div>
+            </div>
+
+            <!-- Properties tab -->
+            <div class="row" data-ng-controller="propertiesTabCtrl" ng-switch-when="properties">
+                <div class="col-md-12">
+
+                    <!-- Header, Loading and Error (directives) -->
+                    <div wm-tab-header></div>
+                    <div wm-tab-loading></div>
+                    <div wm-tab-error></div>
+
+                    <!-- Content -->
+                    <div data-ng-show="(tabView == 'content')">
+
+                        <!-- Buttons -->
+                        <div class="row tab-btns">
+
+                            <div class="col-md-12">
+
+                                <button type="button" class="btn btn-default btn-sm" data-toggle="modal" data-target="#assignJobDialog">
+                                    <span class="glyphicon glyphicon-user" aria-hidden="true"></span> Assign Job
+                                </button>
+
+                                <button type="button" class="btn btn-default btn-sm" data-ng-click="setEditValues(job)"
+                                        data-toggle="modal" data-target="#editDetailsDialog">
+                                    <span class="glyphicon glyphicon-edit" aria-hidden="true"></span> Edit Details
+                                </button>
+
+                                <button type="button" class="btn btn-default btn-sm" data-toggle="modal" data-target="#editNotesDialog">
+                                    <span class="glyphicon glyphicon-pencil" aria-hidden="true"></span> Edit Notes
+                                </button>
+
+                                <button type="button" class="btn btn-default btn-sm" data-ng-click="refresh()">
+                                    <span class="glyphicon glyphicon-refresh" aria-hidden="true"></span> Refresh
+                                </button>
+
+                            </div>
+
+                        </div>
+
+                        <!-- Job Properties -->
+                        <div class="row">
+                            <div class="col-md-6">
+                                <form class="form-horizontal">
+
+                                    <div class="form-group">
+                                        <label class="control-label col-md-4">Job Name</label>
+                                        <div class="col-md-8">
+                                            <p class="form-read-only">{{job.name}}</p>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="control-label col-md-4">Job Type</label>
+                                        <div class="col-md-8">
+                                            <p class="form-read-only">{{job.jobType.name}}</p>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="control-label col-md-4">Job Status</label>
+                                        <div class="col-md-8">
+                                            <p class="form-read-only">{{job.jobStatus.caption}}</p>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="control-label col-md-4">Job Owner</label>
+                                        <div class="col-md-8">
+                                            <p class="form-read-only">
+                                                {{job.ownedByDV}}
+                                                <span class="dim-text"> ({{job.ownedBy}})</span>
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="control-label col-md-4">Assigned To</label>
+                                        <div class="col-md-8">
+                                            <p ng-show="(job.assignedToDV !='')" class="form-read-only">
+                                                {{job.assignedToDV}}
+                                                <span ng-show="(job.assignedType == 1)" class="dim-text"> ({{job.assignedTo}})</span>
+                                            </p>
+                                            <p ng-show="(job.assignedToDV =='')" class="form-read-only dim-text">(not assigned)</p>
+                                        </div>
+                                    </div>
+
+                                </form>
+
+                            </div>
+
+                            <div class="col-md-6">
+
+                                <form class="form-horizontal">
+
+                                    <div class="form-group">
+                                        <label class="control-label col-md-4">Due Date</label>
+                                        <div class="col-md-8">
+                                            <p class="form-read-only">{{job.dueDate | date : 'dd/MM/yyyy'}}</p>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="control-label col-md-4">Start Date</label>
+                                        <div class="col-md-8">
+                                            <p class="form-read-only">{{job.startDate | date : 'dd/MM/yyyy'}}</p>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="control-label col-md-4">Progress</label>
+                                        <div class="col-md-8">
+                                            <p class="form-read-only">{{job.percentageComplete}}%</p>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="control-label col-md-4">Priority</label>
+                                        <div class="col-md-8">
+                                            <p class="form-read-only">{{job.priorityDV}}</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="control-label col-md-4">Parent Job</label>
+                                        <div class="col-md-8">
+                                            <p data-ng-show="(job.parentJobId > 0)" class="form-read-only">
+                                                <a href="job/{{job.parentJobId}}">{{job.parentJobId}}</a></p>
+                                            <p data-ng-show="(job.parentJobId == 0)" class="form-read-only text-muted">(none)</p>
+                                        </div>
+                                    </div>
+
+                                </form>
+
+                            </div>
+                        </div>
+                        <form class="form-horizontal">
+
+                            <div class="form-group">
+                                <label class="control-label col-md-2">Description</label>
+                                <div class="col-md-10">
+                                    <textarea class="form-control" readonly rows="3">{{job.description}}</textarea>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="control-label col-md-2">Notes</label>
+                                <div class="col-md-10">
+                                    <textarea class="form-control" readonly rows="3">{{notes}}</textarea>
+                                </div>
+                            </div>
+
+                        </form>
+                        
+                        <!-- Assign Job Dialog -->
+                        <div class="modal fade" id="assignJobDialog" tabindex="-1" role="dialog">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                                        <h4 class="modal-title">Assign Job</h4>
+                                    </div>
+                                    <div class="modal-body">
+                                        <form class="form-horizontal">
+                                            <div class="form-group">
+                                                <label class="control-label col-md-3">Assign To:</label>
+                                                <div class="col-md-8">
+                                                    <select class="form-control" data-ng-model="newAssignType" data-ng-change="setNewJobAssignTo()">
+                                                        <option value="1" data-ng-selected="newAssignType == 1">User</option>
+                                                        <option value="2" data-ng-selected="newAssignType == 2">Group</option>
+                                                        <option value="0" data-ng-selected="newAssignType == 0">Unassigned</option>
+                                                        <option value="-99" data-ng-selected="newJob.assignType == -99">Assign to Me</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="form-group" ng-show="newAssignType == 1">
+                                                <div class="col-md-8 col-md-offset-3">
+                                                    <select class="form-control" data-ng-model="newAssignTo">
+                                                        <option ng-repeat="item in users | orderBy:'lastName'" value="{{item.userName}}">{{item.lastName}}, {{item.firstName}}  ({{item.userName}})</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="form-group" ng-show="newAssignType == 2">
+                                                <div class="col-md-8 col-md-offset-3">
+                                                    <select class="form-control" data-ng-model="newAssignTo">
+                                                        <option ng-repeat="item in groups" value="{{item.name}}">{{item.name}}</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </form>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-primary" data-ng-disabled="false"
+                                                data-ng-click="assignJob()">
+                                            Save
+                                        </button>
+                                        <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Edit Details Dialog -->
+                        <div class="modal fade" id="editDetailsDialog" tabindex="-1" role="dialog">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                                        <h4 class="modal-title">Edit Job Details</h4>
+                                    </div>
+                                <div class="modal-body">
+                                    <form class="form-horizontal">
+										<div class="form-group">
+                                           	<div class="form-group">
+											<label class="control-label col-md-3">Job Name</label>
+                                                <div class="col-md-8">
+                                                    <textarea class="form-control" data-ng-model="newJobName"></textarea>
+                                                </div>
+											</div>
+											
+                                            <div class="form-group">
+                                                <label class="control-label col-md-3">Priority</label>
+                                                <div class="col-md-8">
+                                                    <select class="form-control" data-ng-model="newPriority">
+                                                        <option value="0" data-ng-selected="newPriority == 0">Low</option>
+                                                        <option value="1" data-ng-selected="newPriority == 1">Medium</option>
+                                                        <option value="2" data-ng-selected="newPriority == 2">High</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="form-group">
+                                                <label class="control-label col-md-3">Due Date</label>
+                                                <div class="col-md-8">
+                                                    <input type="date" class="form-control" id="newDueDateInput" data-ng-model="newDueDate" />
+                                                </div>
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label class="control-label col-md-3">Parent Job</label>
+                                                <div class="col-md-4">
+                                                    <input type="number" placeholder="(none)" class="form-control" id="newParentJobIdInput" data-ng-model="newParentJobId" />
+                                                </div>
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label class="control-label col-md-3">Description</label>
+                                                <div class="col-md-8">
+                                                    <textarea class="form-control" rows="6" data-ng-model="newDesc"></textarea>
+                                                </div>
+                                            </div>
+										</div>    
+									</form>
+                                    
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-primary" data-ng-disabled="false"
+                                                data-ng-click="saveDetails()">
+                                            Save
+                                        </button>
+                                        <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                                    </div>
+                                </div>
+								</div>
+							</div>
+						</div>
+                        <!-- Edit Notes Dialog -->
+                        <div class="modal fade" id="editNotesDialog" tabindex="-1" role="dialog">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                                        <h4 class="modal-title">Edit Notes</h4>
+                                    </div>
+                                    <div class="modal-body">
+                                        <form class="form-horizontal">
+                                            <div class="form-group">
+                                                <label class="control-label col-md-3">Notes</label>
+                                                <div class="col-md-9">
+                                                    <textarea class="form-control" rows="6" data-ng-model="newNotes"></textarea>
+                                                </div>
+                                            </div>
+                                        </form>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-primary" data-ng-click="saveNotes()">Save</button>
+                                        <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Activity Log tab -->
+            <div class="row" data-ng-controller="activityTabCtrl" ng-switch-when="activity">
+                <div class="col-md-12">
+
+                    <!-- Header, Loading and Error (directives) -->
+                    <div wm-tab-header></div>
+                    <div wm-tab-loading></div>
+                    <div wm-tab-error></div>
+
+                    <!-- Content -->
+                    <div data-ng-show="(tabView == 'content')">
+
+                        <!-- Buttons -->
+                        <div class="row tab-btns">
+
+                            <div class="col-md-8">
+
+                                <button type="button" class="btn btn-default btn-sm" data-toggle="modal" data-target="#addCommentDialog">
+                                    <span class="glyphicon glyphicon-comment" aria-hidden="true"></span> Add Comment
+                                </button>
+
+                                <button type="button" class="btn btn-default btn-sm" data-ng-click="refresh()">
+                                    <span class="glyphicon glyphicon-refresh" aria-hidden="true"></span> Refresh
+                                </button>
+
+                            </div>
+
+                            <div class="col-md-4">
+                                <!-- Activity Search -->
+                                <div class="input-group input-group-sm">
+                                    <input type="text" class="form-control" placeholder="Search" ng-model="tabSearchTerm" aria-describedby="search-btn-addon">
+                                    <span class="input-group-addon" id="search-btn-addon">
+                                        <span class="glyphicon glyphicon-search"></span>
+                                    </span>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <!-- Table -->
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th class="sortable">
+                                        <a href="#" ng-click="sortType = 'date'; sortReverse = !sortReverse">Date</a>
+                                        <span ng-show="(sortType == 'date' && sortReverse)" class="glyphicon glyphicon-chevron-up"></span>
+                                        <span ng-show="(sortType == 'date' && !sortReverse)" class="glyphicon glyphicon-chevron-down"></span>
+                                    </th>
+                                    <th class="sortable">
+                                        <a href="#" ng-click="sortType = 'typeName'; sortReverse = !sortReverse">Activity Type</a>
+                                        <span ng-show="(sortType == 'typeName' && sortReverse)" class="glyphicon glyphicon-chevron-up"></span>
+                                        <span ng-show="(sortType == 'typeName' && !sortReverse)" class="glyphicon glyphicon-chevron-down"></span>
+                                    </th>
+
+                                    <th class="sortable">
+                                        <a href="#" ng-click="sortType = 'userDN'; sortReverse = !sortReverse">User</a>
+                                        <span ng-show="(sortType == 'userDN' && sortReverse)" class="glyphicon glyphicon-chevron-up"></span>
+                                        <span ng-show="(sortType == 'userDN' && !sortReverse)" class="glyphicon glyphicon-chevron-down"></span>
+                                    </th>
+
+                                    <th class="sortable">
+                                        <a href="#" ng-click="sortType = 'message'; sortReverse = !sortReverse">Description</a>
+                                        <span ng-show="(sortType == 'message' && sortReverse)" class="glyphicon glyphicon-chevron-up"></span>
+                                        <span ng-show="(sortType == 'message' && !sortReverse)" class="glyphicon glyphicon-chevron-down"></span>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr ng-repeat="row in activity.rows| orderBy:sortType:sortReverse | filter:tabSearchTerm  as filteredRows">
+                                    <td class="activity-log-row-date">{{row.date | date : "dd/MM/yyyy h:mm a" }} </td>
+                                    <td class="activity-log-row-type">{{row.typeName}}</td>
+                                    <td class="activity-log-row-user">{{row.userDN}}</td>
+                                    <td>{{row.message}}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <!-- No Records -->
+                        <div class="well well-sm no-records" data-ng-show="(activity.rows.length == 0)">
+                            <span>There are no records</span>
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <!-- Add Comment Dialog -->
+                <div class="modal fade" id="addCommentDialog" tabindex="-1" role="dialog">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                                <h4 class="modal-title">Activity Log - Add Comment</h4>
+                            </div>
+                            <div class="modal-body">
+                                <form class="form-horizontal">
+                                    <div class="form-group">
+                                        <label class="col-sm-2 control-label" for="addCommentDialogCmt">Comments</label>
+                                        <div class="col-sm-10">
+                                            <textarea class="form-control" ng-model="newComment" rows="3" id="addCommentDialogCmt"
+                                                      required name="addCommentDialogCmt"></textarea>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-primary" data-ng-disabled="newComment == ''" data-ng-click="addComment(newComment)">Save</button>
+                                <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Attachments tab -->
+            <div class="row" data-ng-controller="attachmentsTabCtrl" ng-switch-when="attachments">
+                <div class="col-md-12">
+
+                    <!-- Header, Loading and Error (directives) -->
+                    <div wm-tab-header></div>
+                    <div wm-tab-loading></div>
+                    <div wm-tab-error></div>
+
+                    <!-- Content -->
+                    <div data-ng-show="(tabView == 'content')">
+
+                        <!-- Buttons -->
+                        <div class="row tab-btns">
+                            <div class="col-md-12">
+
+                                <button type="button" class="btn btn-default btn-sm" data-ng-click="showAttachmentPanel = true">
+                                    <span class="glyphicon glyphicon-paperclip" aria-hidden="true"></span> Add Attachment
+                                </button>
+
+                                <button type="button" class="btn btn-default btn-sm" data-ng-click="refresh()">
+                                    <span class="glyphicon glyphicon-refresh" aria-hidden="true"></span> Refresh
+                                </button>
+
+                            </div>
+                        </div>
+
+                        <!-- Add Attachment Panel -->
+                        <div class="row add-attachment-panel" data-ng-show="showAttachmentPanel">
+
+                            <div class="col-md-3">
+                                <h4>Add Attachment</h4>
+                                <!-- This option is not available to avoid documents being stored in SDE
+                                <div class="radio">
+                                    <label>
+                                        <input type="radio" ng-model="addAttachmentType" name="addAttachmentType" id="addAttachmentType2" value="2">
+                                        Embedded file
+                                    </label>
+                                </div>
+                                -->
+                                <div class="radio">
+                                    <label>
+                                        <input type="radio" ng-model="addAttachmentType" name="addAttachmentType" id="addAttachmentType3" value="3" checked>
+                                        URL
+                                    </label>
+                                </div>
+                                <div class="radio">
+                                    <label>
+                                        <input type="radio" ng-model="addAttachmentType" name="addAttachmentType" id="addAttachmentType1" value="1">
+                                        Linked file
+                                    </label>
+                                </div>
+
+                            </div>
+
+                            <div class="col-md-7 add-attachment-input">
+                                
+                                <div data-ng-show="addAttachmentType == 1">
+                                    <form>
+                                        <label for="link-file">Enter File Path</label>
+                                        <input type="url" class="form-control" name="link-file" ng-model="addLinkedPath" />
+                                        <button type="button" class="btn btn-primary btn-sm" ng-click="addLinkedFile(addLinkedPath)">Save</button>
+                                        <button type="button" class="btn btn-default btn-sm" ng-click="cancelAttachment()">Cancel</button>
+                                    </form>
+                                </div>
+                                <!-- This option is not available to avoid documents being stored in SDE
+                                <div data-ng-show="addAttachmentType == 2">
+                                    <form>
+                                        <label for="embed-file">Select File</label>
+                                        <input type="file" id="embed-file-input" name="file" />
+                                        <button type="button" class="btn btn-primary btn-sm" ng-click="uploadEmbeddedFile()">Save</button>
+                                        <button type="button" class="btn btn-default btn-sm" ng-click="cancelAttachment()">Cancel</button>
+                                    </form>
+                                </div>
+                                -->
+                                <div data-ng-show="addAttachmentType == 3">
+                                    <form name="enterUrlForm" novalidate>
+                                        <label for="url-link">Enter URL</label>
+                                        <input type="url" class="form-control" name="url-link" ng-model="addUrlPath" required />
+                                        <div role="alert">
+                                            <span class="error" ng-show="enterUrlForm.input.$error.required">
+                                                Required!
+                                            </span>
+                                            <span class="error" ng-show="enterUrlForm.input.$error.url">
+                                                Not valid url!
+                                            </span>
+                                        </div>
+                                        <button type="button" class="btn btn-primary btn-sm" ng-disabled="addUrlPath == ''" ng-click="addURL(addUrlPath)">Save</button>
+                                        <button type="button" class="btn btn-default btn-sm" ng-click="cancelAttachment()">Cancel</button>
+                                    </form>
+                                </div>
+                          
+
+                            </div>
+
+                            <div class="col-md-2">
+                                <span class="fakelink pull-right" data-ng-click="showAttachmentPanel = false">Close</span>
+                            </div>
+
+                        </div>
+
+                        <!-- Table -->
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th></th>
+                                    <th>File or URL</th>
+                                    <th>Type</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr ng-repeat="row in attachments.rows">
+                                    <td class="row-icon">
+                                        <span data-ng-show="row.storageType == 1" class="glyphicon glyphicon-link"></span>
+                                        <span data-ng-show="row.storageType == 2" class="glyphicon glyphicon-file"></span>
+                                        <span data-ng-show="row.storageType == 3" class="glyphicon glyphicon-new-window"></span>
+                                    </td>
+                                    <td>
+                                        <span data-ng-show="row.storageType == 1" class="fakelink" ng-click="copyToClipboard(row.link)">{{row.linkDV}}</span>
+                                        <a data-ng-show="row.storageType != 1" href="{{row.link}}" target="_blank">{{row.linkDV}}</a>
+                                    </td>
+                                    <td>{{row.typeDV}}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <!-- No Records -->
+                        <div class="well well-sm no-records" data-ng-show="(attachments.rows.length == 0)">
+                            <span>There are no records</span>
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <!-- Copy to Clipboard Dialog -->
+                <div class="modal fade" id="copyFilePathDialog" tabindex="-1" role="dialog">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                                <h4 class="modal-title">Copy Linked File Path</h4>
+                            </div>
+                            <div class="modal-body">
+                                <p>Linked files cannot be directly opened from within this application. Please copy and paste the path into Windows Explorer.</p>
+                                <input id="copyFilePathInput" type="text" class="form-control" data-ng-model="copyFilePath" />
+                                <span class="help-block">Copy to Clipboard (Ctrl + C)</span>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Notes are included in the Properties tab -->
+            
+            <!-- Holds tab -->
+            <div class="row" data-ng-controller="holdsTabCtrl" ng-switch-when="holds">
+                <div class="col-md-12">
+
+                    <!-- Header, Loading and Error (directives) -->
+                    <div wm-tab-header></div>
+                    <div wm-tab-loading></div>
+                    <div wm-tab-error></div>
+
+                    <!-- Content -->
+                    <div data-ng-show="(tabView == 'content')">
+
+                        <!-- Buttons -->
+                        <div class="row tab-btns">
+
+                            <div class="col-md-8">
+
+                                <button type="button" class="btn btn-default btn-sm" data-toggle="modal" data-target="#addHoldDialog">
+                                    <span class="glyphicon glyphicon-stop" aria-hidden="true"></span> Add Hold
+                                </button>
+
+                                <button type="button" class="btn btn-default btn-sm" data-ng-click="refresh()">
+                                    <span class="glyphicon glyphicon-refresh" aria-hidden="true"></span> Refresh
+                                </button>
+
+                            </div>
+
+                            <div class="col-md-4">
+                                <!-- Hold Search -->
+                                <div class="input-group input-group-sm" data-ng-show="(holds.rows.length > 0)">
+                                    <input type="text" class="form-control" placeholder="Search" ng-model="tabSearchTerm" aria-describedby="search-btn-addon">
+                                    <span class="input-group-addon" id="search-btn-addon">
+                                        <span class="glyphicon glyphicon-search"></span>
+                                    </span>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <!-- Table -->
+                        <table class="table job-detail-table">
+                            <thead>
+                                <tr>
+                                    <th></th>
+                                    <th class="sortable">
+                                        <a href="#" ng-click="sortType = 'holdDate'; sortReverse = !sortReverse">Hold Date</a>
+                                        <span ng-show="(sortType == 'holdDate' && sortReverse)" class="glyphicon glyphicon-chevron-up"></span>
+                                        <span ng-show="(sortType == 'holdDate' && !sortReverse)" class="glyphicon glyphicon-chevron-down"></span>
+                                    </th>
+                                    <th class="sortable">
+                                        <a href="#" ng-click="sortType = 'typeDV'; sortReverse = !sortReverse">Type</a>
+                                        <span ng-show="(sortType == 'typeDV' && sortReverse)" class="glyphicon glyphicon-chevron-up"></span>
+                                        <span ng-show="(sortType == 'typeDV' && !sortReverse)" class="glyphicon glyphicon-chevron-down"></span>
+                                    </th>
+                                    <th class="sortable">
+                                        <a href="#" ng-click="sortType = 'heldByDV'; sortReverse = !sortReverse">Held By</a>
+                                        <span ng-show="(sortType == 'heldByDV' && sortReverse)" class="glyphicon glyphicon-chevron-up"></span>
+                                        <span ng-show="(sortType == 'heldByDV' && !sortReverse)" class="glyphicon glyphicon-chevron-down"></span>
+                                    </th>
+                                    <th class="sortable">
+                                        <a href="#" ng-click="sortType = 'holdComments'; sortReverse = !sortReverse">Comment</a>
+                                        <span ng-show="(sortType == 'holdComments' && sortReverse)" class="glyphicon glyphicon-chevron-up"></span>
+                                        <span ng-show="(sortType == 'holdComments' && !sortReverse)" class="glyphicon glyphicon-chevron-down"></span>
+                                    </th>
+                                    <th class="sortable">
+                                        <a href="#" ng-click="sortType = 'releaseDate'; sortReverse = !sortReverse">Release Date</a>
+                                        <span ng-show="(sortType == 'releaseDate' && sortReverse)" class="glyphicon glyphicon-chevron-up"></span>
+                                        <span ng-show="(sortType == 'releaseDate' && !sortReverse)" class="glyphicon glyphicon-chevron-down"></span>
+                                    </th>
+                                    <th class="sortable">
+                                        <a href="#" ng-click="sortType = 'releasedByDV'; sortReverse = !sortReverse">Released By</a>
+                                        <span ng-show="(sortType == 'releasedByDV' && sortReverse)" class="glyphicon glyphicon-chevron-up"></span>
+                                        <span ng-show="(sortType == 'releasedByDV' && !sortReverse)" class="glyphicon glyphicon-chevron-down"></span>
+                                    </th>
+                                    <th class="sortable">
+                                        <a href="#" ng-click="sortType = 'releaseComments'; sortReverse = !sortReverse">Release Comments</a>
+                                        <span ng-show="(sortType == 'releaseComments' && sortReverse)" class="glyphicon glyphicon-chevron-up"></span>
+                                        <span ng-show="(sortType == 'releaseComments' && !sortReverse)" class="glyphicon glyphicon-chevron-down"></span>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr ng-class="{'on-hold': !row.releaseDate}" ng-repeat="row in holds.rows| orderBy:sortType:sortReverse | filter:tabSearchTerm  as filteredRows">
+                                    <td>
+                                        <span ng-show="(row.releaseDate)" class="glyphicon glyphicon-ok icon-green"></span>
+                                        <span ng-show="(!row.releaseDate)" class="glyphicon glyphicon-stop icon-red"></span>
+                                    </td>
+                                    <td>{{row.holdDate | date : "dd/MM/yyyy" }} </td>
+                                    <td>{{row.typeDV}}</td>
+                                    <td>{{row.heldByDV}}</td>
+                                    <td>{{row.holdComments}}</td>
+                                    <td>
+                                        <span ng-show="(row.releaseDate)">{{row.releaseDate | date : "dd/MM/yyyy" }}</span>
+                                        <span ng-show="(!row.releaseDate)" data-toggle="modal" data-target="#releaseHoldDialog"
+                                              ng-click="selectReleaseHold(row)" class="fakelink">(Release Hold)</span>
+                                    </td>
+                                    <td>{{row.releasedByDV}}</td>
+                                    <td>{{row.releaseComments}}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <!-- No Records -->
+                        <div class="well well-sm no-records" data-ng-show="(holds.rows.length == 0)">
+                            <span>There are no records</span>
+                        </div>
+
+                        <!-- Add Hold Dialog -->
+                        <div class="modal fade" id="addHoldDialog" tabindex="-1" role="dialog">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                                        <h4 class="modal-title">Add Hold</h4>
+                                    </div>
+                                    <div class="modal-body">
+                                        <form class="form-horizontal">
+                                            <div class="form-group">
+                                                <label class="col-sm-2 control-label" for="addHoldDialogType">Reason</label>
+                                                <div class="col-sm-10">
+                                                    <div class="dropdown">
+                                                        <button class="btn btn-default dropdown-toggle" type="button" id="addHoldDialogType"
+                                                                data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+                                                            <span ng-show="(selectedHoldType)">{{selectedHoldType.name}}</span>
+                                                            <span ng-show="(!selectedHoldType)">Please select a reason</span>
+
+                                                            <span class="caret"></span>
+                                                        </button>
+                                                        <ul class="dropdown-menu" aria-labelledby="addHoldDialogType">
+                                                            <li ng-repeat="item in holdTypes" ng-click="selectHoldType(item)">
+                                                                <a href="#">{{item.name}}</a>
+                                                            </li>
+                                                        </ul>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label class="col-sm-2 control-label" for="addHoldDialogCmt">Comments</label>
+                                                <div class="col-sm-10">
+                                                    <textarea class="form-control" ng-model="addHoldCmt" rows="3" id="addHoldDialogCmt"
+                                                              name="addHoldDialogCmt"></textarea>
+                                                </div>
+                                            </div>
+
+                                        </form>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-primary" data-ng-disabled="(selectedHoldType == null)"
+                                                data-ng-click="addHold(addHoldCmt)">
+                                            Save
+                                        </button>
+                                        <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Release Hold Dialog -->
+                        <div class="modal fade" id="releaseHoldDialog" tabindex="-1" role="dialog">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                                        <h4 class="modal-title">Release Hold<span data-ng-show="(selectedHold)" class="dim-text"> - {{selectedHold.typeDV}}</span></h4>
+                                    </div>
+                                    <div class="modal-body">
+                                        <form class="form-horizontal">
+                                            <div class="form-group">
+                                                <label for="holdsReleaseCmt" class="col-sm-2 control-label">Comments</label>
+                                                <div class="col-sm-10">
+                                                    <textarea class="form-control" ng-model="releaseHoldCmt" rows="3" id="holdsReleaseCmt" name="holdsReleaseCmt" required></textarea>
+                                                </div>
+                                            </div>
+                                        </form>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-primary" data-ng-disabled="releaseHoldCmt == ''"
+                                                data-ng-click="releaseHold(selectedHold, releaseHoldCmt)">
+                                            Save
+                                        </button>
+                                        <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- 404 tab not found -->
+            <div class="row" ng-switch-when="404">
+                <div class="col-md-12">
+                    <h3>404: Not Found</h3>
+                    <div class="well well-sm loading-error">
+                        The path <strong>{{urlLocation()}}</strong> does not exist. Please select
+                        a tab on the left or go to the <a href="job/{{jobId}}">default tab</a>.
+                    </div>
+                </div>
+            </div>
+
+        </div> 
+    
+        <!-- Processing Dialog -->
+        <div class="modal fade" id="processing-dialog" tabindex="-1" role="dialog">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-body">
+                        <p class="processing-dialog-msg"><span class="glyphicon glyphicon-hourglass"></span> Processing - please wait...</p>                        
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+    </div>
+
+</div>

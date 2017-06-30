@@ -1,0 +1,109 @@
+﻿<!-- Reporting (view) -->
+<div id="reporting-container">
+
+    <!-- Reporting Toolbar -->
+    <div class="row toolbar">
+
+        <!-- Buttons -->
+        <div class="col-md-12">
+
+            <div class="btn-group" role="group" aria-label="Chart Type">
+                <button type="button" class="btn btn-default btn-sm" ng-class="{active: view == 'Chart'}" ng-click="changeReportView('Chart')">Chart</button>
+                <button type="button" class="btn btn-default btn-sm" ng-class="{active: view == 'Table'}" ng-click="changeReportView('Table')">Table</button>
+            </div>
+            
+            <!-- Reports -->
+            <div class="btn-group" id="filter-button">
+                <button type="button" class="btn btn-default btn-sm">
+                    <span class="glyphicon glyphicon-stats" aria-hidden="true"></span>Report: {{currentReport.name}}
+                </button>
+                <button type="button" class="btn btn-default btn-sm dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    <span class="caret"></span>
+                    <span class="sr-only">Toggle Dropdown</span>
+                </button>
+                <!-- List of filters -->
+                <ul class="dropdown-menu">
+                    <li data-ng-repeat="item in reports"><a href="" data-ng-click="runReport(item)">{{item.name}}</a></li>
+                </ul>
+            </div>
+
+            <!-- Chart Type -->
+            <div ng-show="view == 'Chart'"class="pull-right">
+                <span class="chart-type-label">Chart Type:</span>
+                <div class="btn-group" role="group" aria-label="Chart Type" ng-show="view == 'Chart'">
+                    <button type="button" class="btn btn-default btn-sm btn-chart-type" ng-repeat="ct in chartTypes" ng-class="{active: ct == chartType}" data-ng-click="updateChartType(ct)">{{ct}}</button>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+    
+
+    <!-- Reporting Header -->
+    <div class="row">
+        <div class="col-md-12">
+            <h3>{{currentReport.title}}</h3>
+            <h4>{{currentReport.description}}</h4>
+        </div>
+    </div>
+    
+
+    <div ng-switch="view">
+
+
+    </div>
+
+
+    <!-- Reporting Table -->
+    <div class="row" ng-show="view=='Table'">
+        <div class="col-md-12">
+            <table class="table report-table">
+                <thead>
+                    <tr>
+                        <th ng-repeat="col in tableData.columns">{{col}}</th>
+                    </tr>
+                </thead>
+                <tbody ng-repeat="grpRow in tableData.rows">
+                    <tr>
+                        <td class="fakelink" ng-click="grpRow.expanded = !grpRow.expanded">
+                            <span ng-show="!grpRow.expanded" class="glyphicon glyphicon-triangle-right"></span>
+                            <span ng-show="grpRow.expanded" class="glyphicon glyphicon-triangle-bottom"></span>
+                            {{grpRow.group}}
+                        </td>
+                        <td>{{grpRow.label}}</td>
+                        <td>{{grpRow.value}}</td>
+                    </tr>
+                    <tr ng-show="grpRow.expanded" ng-repeat="row in grpRow.dataRows">
+                        <td ng-repeat="value in row">
+                            <span>{{value}}</span>
+                        </td>
+                    </tr>
+
+                </tbody>
+            </table>
+
+        </div>
+    </div>
+
+
+    <!-- Reporting Chart -->
+    <div class="row" ng-show="view == 'Chart'">
+        <div class="col-md-9 chart-box">
+
+            <div class="ct-chart ct-perfect-fourth"></div>
+
+        </div>
+        <div class="col-md-3">
+            <h4>Legend</h4>
+            <div class="row" ng-repeat="item in legendData">
+                <div class="col-md-12 legend-item">                    
+                    <div class="well swatch swatch-{{item.id}}"></div>
+                    <div class="legend-label">{{item.name}}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+</div>

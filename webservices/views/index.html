@@ -1,0 +1,317 @@
+﻿<!-- Job List (view) -->
+<div id="job-list-container">
+
+    <!-- Job List Toolbar -->
+    <div class="row toolbar">
+
+        <div class="col-md-9">
+
+            <!-- Buttons -->
+            <button type="button" class="btn toolbar-btn btn-sm space-left ng-binding"
+                    data-toggle="modal" data-target="#createJobDialog">
+                <span class="glyphicon glyphicon-asterisk" aria-hidden="true"></span> Create Job
+            </button>
+            <button type="button" data-ng-disabled="!jobRowSelected()" data-ng-click="cloneJob()"
+                    class="btn toolbar-btn btn-sm space-left ng-binding">
+                <span class="glyphicon glyphicon-duplicate" aria-hidden="true"></span> Clone Job
+            </button>
+            <button type="button" data-ng-disabled="!jobRowSelected()"
+                    data-toggle="modal" data-target="#confirmJobDelete" class="btn toolbar-btn btn-sm space-left ng-binding">
+                <span class="glyphicon glyphicon-trash" aria-hidden="true"></span> Delete Job
+            </button>
+
+            <!-- Filter button -->
+            <div class="btn-group" id="filter-button">
+                <button type="button" class="btn btn-default btn-sm">
+                    <span class="glyphicon glyphicon-filter" aria-hidden="true"></span> {{viewData.filter.name}}
+                </button>
+                <button type="button" class="btn btn-default btn-sm dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    <span class="caret"></span>
+                    <span class="sr-only">Toggle Dropdown</span>
+                </button>
+                <!-- List of filters -->
+                <ul class="dropdown-menu">
+                    <li data-ng-repeat="item in viewData.filters | orderBy:'name'"><a href="" data-ng-click="runFilter(item)">{{item.name}}</a></li>
+                </ul>
+            </div>
+
+            <button type="button" class="btn toolbar-btn btn-sm space-left" ng-click="refresh()">
+                <span class="glyphicon glyphicon-refresh" aria-hidden="true"></span> Refresh
+            </button>
+
+            <span class="record-count pull-right">Records: {{filteredJobs.length}}</span>
+
+        </div>
+
+        <div class="col-md-3">
+            <!-- Search -->
+            <div class="input-group input-group-sm">
+                <input type="text" class="form-control ng-pristine ng-untouched ng-valid ng-empty" placeholder="Search" ng-model="viewData.searchTerm" aria-describedby="search-btn-addon">
+                <span class="input-group-addon" id="search-btn-addon" data-ng-click="runSearch()">
+                    <span class="glyphicon glyphicon-search"></span>
+                </span>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Job List -->
+    <div class="row">
+        <div class="col-md-12">
+
+            <!-- Job Query Loading -->
+            <div class="well well-sm loading" data-ng-show="(jobListView == 'loading')">
+                Loading...
+            </div>
+
+            <!-- Job Query Error -->
+            <div class="well well-sm loading-error" data-ng-show="(jobListView == 'error')">
+                <span class="glyphicon glyphicon-warning-sign"></span>
+                <span>{{jobLoadError}} - <span class="fakelink" data-ng-click="reloadJobQuery()">Retry</span></span>
+            </div>
+
+            <!-- Job List Table -->
+            <div data-ng-show="(jobListView == 'content')">
+
+                <table class="table" data-ng-show="(filteredJobs.length > 0)">
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th>Job #</th>
+                            <th>{{viewData.jobNameField.alias}}</th>
+                            <th data-ng-repeat="fld in viewData.otherFields">{{fld.alias}}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="job-row" data-ng-repeat="job in viewData.rows | filter : viewData.searchTerm as filteredJobs"
+                            data-ng-class="{'job-row-selected': viewData.selJobId == job[viewData.jobIdIndex], 'job-row' : viewData.selJobId != job[viewData.jobIdIndex]}"
+                            data-ng-click="selectJob(job[viewData.jobIdIndex])"
+                            ng-dblclick="openJobDetail(job[viewData.jobIdIndex])">
+                            
+                            <td class="row-icon">
+                                <span data-ng-click="openJobDetail(job[viewData.jobIdIndex])">
+                                    <span class="glyphicon glyphicon-file"></span>
+                                </span>
+                            </td>
+                            <td>
+                                <span data-ng-click="openJobDetail(job[viewData.jobIdIndex])">
+                                    <span class="fakelink">{{job[viewData.jobIdIndex]}}</span>
+                                </span>
+                            </td>
+
+                            <td>{{job[viewData.jobNameIndex]}}</td>
+
+                            <td data-ng-repeat="attr in otherValues(job) track by $index">{{attr}}</td>
+
+
+                        </tr>
+                    </tbody>
+                </table>
+
+
+
+                <!-- No Records -->
+                <div class="well well-sm no-records" data-ng-show="(filteredJobs.length == 0)">
+                    <span>There are no matching records</span>
+                    <span data-ng-show="viewData.searchTerm != ''">
+                        - <span class="fakelink" data-ng-click="viewData.searchTerm = ''">Clear Search</span>
+                    </span>
+                </div>
+
+            </div>
+
+            <div data-ng-show="(jobListView == 'new-record')">
+                <table class="table" data-ng-show="(filteredJobs.length > 0)">
+                    <thead>
+                        <tr>
+                            <th>{{viewData.jobNameField.alias}}</th>
+                            <th data-ng-repeat="fld in viewData.otherFields">{{fld.alias}}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Show all records -->
+                        <tr class="job-row" data-ng-repeat="job in viewData.rows | filter : viewData.searchTerm as filteredJobs"
+                            data-ng-class="{'job-row-selected': viewData.selJobId == job[viewData.jobIdIndex], 'job-row' : viewData.selJobId != job[viewData.jobIdIndex]}"
+                            data-ng-click="selectJob(job[viewData.jobIdIndex])">
+                            <td>
+                                <span data-ng-click="openJobDetail(job[viewData.jobIdIndex])">
+                                    <span class="glyphicon glyphicon-file job-row-icon"></span>
+                                    <span class="fakelink">{{job[viewData.jobNameIndex]}}</span>
+                                </span>
+                            </td>
+                            <td data-ng-repeat="attr in otherValues(job) track by $index">{{attr}}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Dialog -->
+    <div class="modal fade" id="confirmJobDelete" tabindex="-1" role="dialog">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title">Confirm Delete</h4>
+                </div>
+                <div class="modal-body">
+                    <p>Do you want to delete job #{{viewData.selJobId}}?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-dismiss="modal" data-ng-click="deleteJob(viewData.selJobId)">Delete</button>
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>                    
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Create Job Dialog -->
+    <div class="modal fade" id="createJobDialog" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title">Create New Job <span data-ng-show="newJob.cloneOf > -1"> - Clone of #{{newJob.cloneOf}}</span></h4>
+                </div>
+                <div class="modal-body">
+
+                    <form class="form-horizontal" name="createJobForm" novalidate role="form"> 
+                        
+                        <div class="form-group">
+                            <label class="control-label col-md-3">Job Type</label>
+                            <div class="col-md-5">
+                                <select class="form-control" ng-model="newJob.jobTypeId" ng-change="newJobTypeChange()">
+                                    <option ng-repeat="item in jobTypes" data-ng-selected="newJob.jobTypeId == item.id" value="{{item.id}}">{{item.name}}</option>
+                                </select>
+                             </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="control-label col-md-3" for="dueDate">Job Name</label>
+                            <div class="col-md-5">
+                                <input class="form-control" type="text" data-ng-model="newJob.name" />
+                            </div>
+                        </div>
+
+
+                        <div class="form-group">
+                            <label class="control-label col-md-3" for="dueDate">Job Owner</label>
+                            <div class="col-md-5">
+                                <input class="form-control" type="text" readonly value="{{currentUser | currentUserDisplayName}}" />
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="control-label col-md-3">Assign To:</label>
+                            <div class="col-md-5">
+                                <select class="form-control" data-ng-model="newJob.assignType" ng-change="setNewJobAssignTo()">                                   
+                                    <option value="1" data-ng-selected="newJob.assignType == 1">User</option>
+                                    <option value="2" data-ng-selected="newJob.assignType == 2">Group</option>
+                                    <option value="0" data-ng-selected="newJob.assignType == 0">Unassigned</option>
+                                    <option value="-99" data-ng-selected="newJob.assignType == -99">Assign to Me</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group" ng-show="newJob.assignType == 1">
+                            <div class="col-md-5 col-md-offset-3">
+                                <select class="form-control" data-ng-model="newJob.assignTo">
+                                    <option ng-repeat="item in users | orderBy:'lastName'" value="{{item.userName}}">{{item.lastName}}, {{item.firstName}}  ({{item.userName}})</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group" ng-show="newJob.assignType == 2">
+                            <div class="col-md-5 col-md-offset-3">
+                                <select class="form-control" data-ng-model="newJob.assignTo">
+                                    <option ng-repeat="item in groups" value="{{item.name}}">{{item.name}}</option>
+                                </select>
+                            </div>
+                        </div>
+                             
+                        <div class="form-group">
+                            <label class="control-label col-md-3" for="startDate">Start Date</label>
+                            <div class="col-md-4">
+                                <input type="date" id="startDate" name="startDate" class="form-control" ng-model="newJob.startDate" />
+                            </div>
+                        </div>
+
+
+                        <div class="form-group">
+                            <label class="control-label col-md-3" for="dueDate">Due Date</label>
+                            <div class="col-md-4">
+                                <input type="date" id="dueDate" name="dueDate" class="form-control" ng-model="newJob.dueDate" />
+                            </div>
+                        </div>
+
+
+                        <div class="form-group">
+                            <label class="control-label col-md-3">Priority</label>
+                            <div class="col-md-4">
+                                <select class="form-control" data-ng-model="newJob.priority">
+                                    <option value="0" data-ng-selected="newJob.priority == 0">Low</option>
+                                    <option value="1" data-ng-selected="newJob.priority == 1">Medium</option>
+                                    <option value="2" data-ng-selected="newJob.priority == 2">High</option>                                    
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="control-label col-md-3" for="dueDate">Description</label>
+                            <div class="col-md-8">                             
+                                <textarea class="form-control" rows="6" data-ng-model="newJob.description"></textarea>
+                            </div>
+                        </div>
+                        <div class="form-group">        
+                            <div class="col-md-8 col-md-offset-3">
+                                <span class="text-muted">{{newJobTypeTip}}</span>
+                            </div>
+                        </div>
+                                                
+                    </form>
+                    
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-dismiss="modal" data-ng-click="createJob(newJob)">Create</button>
+                    <button type="button" class="btn btn-default" data-dismiss="modal" data-ng-click="cancelNewJob()">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+
+    <!-- Clone Job Dialog -->
+    <div class="modal fade" id="cloneJobDialog2" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title">Clone Job #{{viewData.selJobId}}</h4>
+                </div>
+                <div class="modal-body">
+                    <p>Clone job #{{viewData.selJobId}}</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-dismiss="modal" data-ng-click="cloneJob()">Save</button>
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Processing Dialog -->
+    <div class="modal fade" id="processing-dialog" tabindex="-1" role="dialog">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-body">
+                    <p class="processing-dialog-msg"><span class="glyphicon glyphicon-hourglass"></span> Processing - please wait...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+</div>
